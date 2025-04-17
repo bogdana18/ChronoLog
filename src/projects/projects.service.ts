@@ -1,29 +1,63 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable,NotFoundException  } from '@nestjs/common';
 import { CreateProjectDto } from './dto/create-project.dto';
-import { UpdateProjectDto } from './dto/update-project.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Project } from './project.entity';
 
+export interface ProjectWithTotal {
+  id: number;
+  name: string;
+  completed: boolean;
+  startTime: Date | null;
+  endTime: Date | null;
+  totalTimeMinutes: number;
+}
+
 @Injectable()
 export class ProjectsService {
-  create(createProjectDto: CreateProjectDto) {
-    return 'This action adds a new project';
+  constructor(
+    @InjectRepository(Project)
+    private readonly projectRepo: Repository<Project>,
+  ) {}
+
+  async create(dto: CreateProjectDto): Promise<Project> {
+    const proj = this.projectRepo.create(dto);
+    return this.projectRepo.save(proj);
   }
 
   findAll() {
-    return `This action returns all projects`;
+    return this.projectRepo.find();
   }
+  
+  async findAllDetailed(): Promise<ProjectWithTotal[]> {
+    const projects = await this.projectRepo.find({
+      relations: ['timeEntries'],
+    });
 
+    return projects.map((p) => {
+      const totalTimeMinutes = p.timeEntries.reduce((sum, entry) => {
+        const duration = (entry.end.getTime() - entry.start.getTime()) / (1000 * 60);
+        return sum + duration;
+      }, 0);
+
+      return {
+        id: p.id,
+        name: p.name,
+        completed: p.completed,
+        startTime: p.startTime ?? null,
+        endTime: p.endTime ?? null,
+        totalTimeMinutes: Math.round(totalTimeMinutes),
+      };
+    });
+  }
   findOne(id: number) {
-    return `This action returns a #${id} project`;
+    return this.projectRepo.findOneBy({ id });
   }
 
-  update(id: number, updateProjectDto: UpdateProjectDto) {
-    return `This action updates a #${id} project`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} project`;
+  async remove(id: number): Promise<void> {
+    const res = await this.projectRepo.delete(id);
+    if (res.affected === 0) {
+      throw new NotFoundException(`Project #${id} not found`);
+    }
   }
 }
