@@ -11,6 +11,7 @@ import { TimeEntriesModule } from './time-entries/time-entries.module';
       type: 'sqlite',
       database: 'db.sqlite',
       entities: [Project, TimeEntry],
+      autoLoadEntities: true,
       synchronize: true,
     }),
     ProjectsModule,

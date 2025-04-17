@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { 
+  Entity, 
+  PrimaryGeneratedColumn,
+  Column, 
+  ManyToOne,
+  RelationId,
+  JoinColumn
+} from 'typeorm';
 import { Project } from '../projects/project.entity';
 
 @Entity()
@@ -7,11 +14,15 @@ export class TimeEntry {
   id: number;
 
   @ManyToOne(() => Project, (project) => project.timeEntries, {  onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'projectId' })
   project: Project;
 
-  @Column()
+  @RelationId((entry: TimeEntry) => entry.project)
+  projectId: number;
+
+  @Column({ type: 'datetime'})
   start: Date;
 
-  @Column()
+  @Column({ type: 'datetime' })
   end: Date;
 }
