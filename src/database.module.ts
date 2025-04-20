@@ -1,7 +1,7 @@
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Module } from '@nestjs/common';
-import { Project } from './projects/project.entity';
-import { TimeEntry } from './time-entries/time-entry.entity';
+import { Project } from './projects/entities/project.entity';
+import { TimeEntry } from './time-entries/entities/time-entry.entity';
 import { ProjectsModule } from './projects/projects.module';
 import { TimeEntriesModule } from './time-entries/time-entries.module';
 
@@ -17,7 +17,5 @@ import { TimeEntriesModule } from './time-entries/time-entries.module';
     ProjectsModule,
     TimeEntriesModule,
   ],
-  //controllers: [AppController],
-  //providers: [AppService],
 })
 export class DatabaseModule {}

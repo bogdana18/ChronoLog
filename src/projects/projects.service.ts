@@ -1,8 +1,11 @@
 import { Injectable,NotFoundException  } from '@nestjs/common';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { UpdateProjectDto } from './dto/update-project.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Project } from './project.entity';
+import { Project } from './entities/project.entity';
+import { ProjectStatsService } from '../project-stats/project-stats.service';
+import { ProjectWithTotalDto } from '../project-stats/dto/project-with-total.dto';
 
 export interface ProjectWithTotal {
   id: number;
@@ -16,46 +19,43 @@ export interface ProjectWithTotal {
 @Injectable()
 export class ProjectsService {
   constructor(
-    @InjectRepository(Project)
-    private readonly projectRepo: Repository<Project>,
+    @InjectRepository(Project) private repo: Repository<Project>,
+    private stats: ProjectStatsService,
   ) {}
 
   async create(dto: CreateProjectDto): Promise<Project> {
-    const proj = this.projectRepo.create(dto);
-    return this.projectRepo.save(proj);
+    const proj = this.repo.create(dto);
+    return this.repo.save(proj);
   }
 
   findAll() {
-    return this.projectRepo.find();
+    return this.repo.find();
   }
   
-  async findAllDetailed(): Promise<ProjectWithTotal[]> {
-    const projects = await this.projectRepo.find({
-      relations: ['timeEntries'],
-    });
-
-    return projects.map((p) => {
-      const totalTimeMinutes = p.timeEntries.reduce((sum, entry) => {
-        const duration = (entry.end.getTime() - entry.start.getTime()) / (1000 * 60);
-        return sum + duration;
-      }, 0);
-
-      return {
-        id: p.id,
-        name: p.name,
-        completed: p.completed,
-        startTime: p.startTime ?? null,
-        endTime: p.endTime ?? null,
-        totalTimeMinutes: Math.round(totalTimeMinutes),
-      };
-    });
-  }
   findOne(id: number) {
-    return this.projectRepo.findOneBy({ id });
+    return this.repo.findOneBy({ id });
+  }
+
+  async findAllDetailed(): Promise<ProjectWithTotalDto[]> {
+    const projs = await this.repo.find({ relations: ['timeEntries'] });
+    return this.stats.toWithTotal(projs);
+  }
+
+  async update(id: number, dto: UpdateProjectDto): Promise<Project> {
+    const project = await this.repo.preload({
+      id,
+      startTime: dto.startTime ? new Date(dto.startTime) : undefined,
+      endTime:   dto.endTime   ? new Date(dto.endTime)   : undefined,
+      completed: dto.completed,
+    });
+    if (!project) {
+      throw new NotFoundException(`Project #${id} not found`);
+    }
+    return this.repo.save(project);
   }
 
   async remove(id: number): Promise<void> {
-    const res = await this.projectRepo.delete(id);
+    const res = await this.repo.delete(id);
     if (res.affected === 0) {
       throw new NotFoundException(`Project #${id} not found`);
     }
