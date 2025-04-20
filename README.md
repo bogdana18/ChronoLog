@@ -22,3 +22,6 @@
 - SQLite
 - React
 - TailwindCSS
+
+## Preview:
+![image](preview.png)
